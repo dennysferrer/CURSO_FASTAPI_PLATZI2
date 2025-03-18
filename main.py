@@ -1,9 +1,11 @@
 import zoneinfo
 from fastapi import FastAPI
 from datetime import datetime
-from models import Customer, Transaction, Invoice
+from db import SessionDep, create_all_tables
+from models import Customer, CustomerCreate, Transaction, Invoice
+from sqlmodel import select
 
-app = FastAPI()
+app = FastAPI(lifespan=create_all_tables)
 
 country_timezones = {
     "AR": "America/Argentina/Buenos_Aires",
@@ -38,10 +40,24 @@ async def time_format(iso_code: str, format: str):
     tz = zoneinfo.ZoneInfo(timezone_str)
     return {"time": datetime.now(tz).strftime(format_codes.get(format))}
 
+db_customers: list[Customer] = []
+
+
+@app.get('/customer/{id}', response_model=Customer)
+async def get_customer(id: str, session: SessionDep):
+    return session.exec(select(Customer).where(Customer.id == id)).first()
+    #return db_customers[int(id) - 1]
 
 @app.post('/customer', response_model=Customer)
-async def create_customer(customer_data: Customer):
-    return customer_data
+async def create_customer(customer_data: CustomerCreate, session: SessionDep):
+    customer = Customer.model_validate(customer_data.model_dump())
+    session.add(customer)
+    session.commit()
+    session.refresh(customer)
+    #db_customers.append(customer_data.model_dump())
+    
+    return customer
+    
 
 @app.post('/transactions', response_model=Transaction)
 async def create_customer(transaction_data: Transaction):

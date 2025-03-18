@@ -1,12 +1,21 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional
+from sqlmodel import SQLModel, Field
 
 
-class Customer(BaseModel):
-    name: str
-    description: Optional[str] = None
+
+class CustomerBase(SQLModel):
+    name: str = Field(default=None)
+    description: Optional[str] = Field(default=None)
     email: EmailStr
     age: int
+
+class CustomerCreate(CustomerBase):
+    pass
+
+class Customer(CustomerBase, table=True):
+    #id: str = str(uuid.uuid4())
+    id: int | None = Field(default=None, primary_key=True)
 
 
 class Transaction(BaseModel):
